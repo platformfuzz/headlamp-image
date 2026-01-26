@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  headlamp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        HEADLAMP_VERSION: ${HEADLAMP_VERSION:-main}
+        NODE_VERSION: ${NODE_VERSION:-22.9.0}
+        GO_VERSION: ${GO_VERSION:-1.23.5}
+    image: headlamp:${HEADLAMP_VERSION:-latest}
+    container_name: headlamp
+    ports:
+      - "${HEADLAMP_PORT:-3010}:4466"
+    environment:
+      - HEADLAMP_PLUGIN_DIR=/app/plugins
+      - KUBECONFIG=/app/.kube/config
+      - AWS_CONFIG_FILE=/home/headlamp/.aws/config
+      - AWS_SHARED_CREDENTIALS_FILE=/home/headlamp/.aws/credentials
+      # AWS credentials from aws-vault exec - these must be passed when running docker-compose
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+      - AWS_REGION=${AWS_REGION}
+      # AWS_VAULT_BACKEND is optional - only set if using file backend
+      # - AWS_VAULT_BACKEND=file
+    volumes:
+      # Mount kubeconfig for local Kubernetes access
+      - ${HOME}/.kube/config:/app/.kube/config:ro
+      # Optional: Mount AWS credentials for EKS authentication
+      # - ${HOME}/.aws:/home/headlamp/.aws:ro
+      # Optional: Mount aws-vault storage (if using aws-vault)
+      # - ${HOME}/.awsvault:/home/headlamp/.awsvault:ro
+      # Optional: Mount aws-vault keys (if using aws-vault)
+      # - ${HOME}/.awsvaultk:/home/headlamp/.awsvaultk:ro
+      # Optional: Mount plugins directory
+      - ./plugins:/app/plugins:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3010/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+

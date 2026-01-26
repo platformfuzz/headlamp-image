@@ -1,0 +1,98 @@
+# Environment files
+.env
+.env.local
+.env.*.local
+*.env
+
+# Secrets and credentials
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+*.secret
+secrets/
+credentials/
+*.credentials
+
+# AWS credentials (never commit these)
+.aws/
+.aws/credentials
+.aws/config
+.awsvault/
+.awsvaultk/
+
+# Kubernetes config (may contain sensitive data)
+.kube/
+kubeconfig
+*.kubeconfig
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+*.log
+
+# Build artifacts
+*.tar
+*.tar.gz
+*.zip
+build/
+dist/
+
+# IDE and editor files (keep .vscode for project settings)
+# .vscode/  # Keep VSCode settings for the project
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+
+# Node modules (if any local testing)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Go (if any local testing)
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+go.work.sum
+
+# Python (if any local testing)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Plugins directory (user-specific)
+plugins/*
+!plugins/.gitkeep
+
