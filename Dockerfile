@@ -91,7 +91,14 @@ RUN KUBECTL_VERSION=$(wget -qO- https://dl.k8s.io/release/stable.txt) && \
 # Install AWS CLI via pip (more reliable on Alpine than v2 installer)
 # Using --break-system-packages is safe in containers as we control the environment
 RUN pip3 install --no-cache-dir --break-system-packages awscli && \
-    aws --version
+    # Find where aws was installed and ensure it's in /usr/local/bin for reliable access
+    AWS_PATH=$(which aws || command -v aws || find /usr -name "aws" -type f -executable 2>/dev/null | head -1) && \
+    if [ -n "$AWS_PATH" ] && [ "$AWS_PATH" != "/usr/local/bin/aws" ]; then \
+        cp "$AWS_PATH" /usr/local/bin/aws 2>/dev/null || ln -sf "$AWS_PATH" /usr/local/bin/aws; \
+        chmod +x /usr/local/bin/aws; \
+    fi && \
+    # Verify aws is accessible from /usr/local/bin
+    /usr/local/bin/aws --version
 
 # Install aws-vault
 RUN AWS_VAULT_VERSION=7.2.0 && \
@@ -135,11 +142,20 @@ RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
     echo '    cp "$KUBECONFIG_PATH" /tmp/.kube/config' >> /app/entrypoint.sh && \
     echo '    chown headlamp:headlamp /tmp/.kube/config' >> /app/entrypoint.sh && \
     echo '    chmod 600 /tmp/.kube/config' >> /app/entrypoint.sh && \
-    echo '    export KUBECONFIG=/tmp/.kube/config' >> /app/entrypoint.sh && \
+    echo '    KUBECONFIG_TMP="/tmp/.kube/config"' >> /app/entrypoint.sh && \
     echo '  else' >> /app/entrypoint.sh && \
-    echo '    # File is readable, use it directly' >> /app/entrypoint.sh && \
-    echo '    export KUBECONFIG="$KUBECONFIG_PATH"' >> /app/entrypoint.sh && \
+    echo '    # File is readable, copy to tmp to modify if needed' >> /app/entrypoint.sh && \
+    echo '    mkdir -p /tmp/.kube' >> /app/entrypoint.sh && \
+    echo '    cp "$KUBECONFIG_PATH" /tmp/.kube/config' >> /app/entrypoint.sh && \
+    echo '    chown headlamp:headlamp /tmp/.kube/config' >> /app/entrypoint.sh && \
+    echo '    chmod 600 /tmp/.kube/config' >> /app/entrypoint.sh && \
+    echo '    KUBECONFIG_TMP="/tmp/.kube/config"' >> /app/entrypoint.sh && \
     echo '  fi' >> /app/entrypoint.sh && \
+    echo '  # Remove AWS_PROFILE from exec commands when using env var credentials' >> /app/entrypoint.sh && \
+    echo '  if [ -n "$AWS_ACCESS_KEY_ID" ] && [ -f "$KUBECONFIG_TMP" ]; then' >> /app/entrypoint.sh && \
+    echo '    sed -i "/- name: AWS_PROFILE/,+1 d" "$KUBECONFIG_TMP" 2>/dev/null || true' >> /app/entrypoint.sh && \
+    echo '  fi' >> /app/entrypoint.sh && \
+    echo '  export KUBECONFIG="$KUBECONFIG_TMP"' >> /app/entrypoint.sh && \
     echo 'fi' >> /app/entrypoint.sh && \
     echo '' >> /app/entrypoint.sh && \
     echo '# Prepare environment for headlamp user' >> /app/entrypoint.sh && \
@@ -150,10 +166,15 @@ RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
     echo 'export AWS_CONFIG_FILE="${AWS_CONFIG_FILE:-/home/headlamp/.aws/config}"' >> /app/entrypoint.sh && \
     echo 'export AWS_SHARED_CREDENTIALS_FILE="${AWS_SHARED_CREDENTIALS_FILE:-/home/headlamp/.aws/credentials}"' >> /app/entrypoint.sh && \
     echo '[ -z "$AWS_VAULT_BACKEND" ] && export AWS_VAULT_BACKEND="${AWS_VAULT_BACKEND:-file}" || true' >> /app/entrypoint.sh && \
+    echo '# Unset AWS_PROFILE when credentials provided via env vars' >> /app/entrypoint.sh && \
+    echo '[ -n "$AWS_ACCESS_KEY_ID" ] && unset AWS_PROFILE || true' >> /app/entrypoint.sh && \
     echo '' >> /app/entrypoint.sh && \
     echo '# Switch to headlamp user and execute command with proper environment' >> /app/entrypoint.sh && \
     echo '# Pass through all necessary environment variables for AWS/eks exec commands' >> /app/entrypoint.sh && \
+    echo '# Ensure PATH includes standard binary directories for aws, kubectl, etc.' >> /app/entrypoint.sh && \
+    echo 'export PATH="/usr/local/bin:/usr/bin:/bin:$PATH"' >> /app/entrypoint.sh && \
     echo 'exec su-exec headlamp:headlamp env \' >> /app/entrypoint.sh && \
+    echo '  PATH="/usr/local/bin:/usr/bin:/bin:$PATH" \' >> /app/entrypoint.sh && \
     echo '  HOME=/home/headlamp \' >> /app/entrypoint.sh && \
     echo '  KUBECONFIG="${KUBECONFIG:-/app/.kube/config}" \' >> /app/entrypoint.sh && \
     echo '  AWS_CONFIG_FILE="${AWS_CONFIG_FILE:-/home/headlamp/.aws/config}" \' >> /app/entrypoint.sh && \

@@ -72,7 +72,7 @@ docker compose up -d
 
 Access Headlamp at `http://localhost:3010`
 
-### Replace Existing Container
+### Replace Existing Container (Quick Start)
 
 To always replace an existing container (useful for updates):
 
@@ -245,7 +245,7 @@ docker exec headlamp sh -c 'export KUBECONFIG=/tmp/.kube/config && kubectl get n
    aws-vault exec <profile> -- docker compose up -d
    ```
 
-### Replace Existing Container
+### Replace Existing Container (Troubleshooting)
 
 ```bash
 # Stop and remove

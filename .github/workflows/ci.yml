@@ -27,6 +27,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            HEADLAMP_VERSION=${HEADLAMP_VERSION:-main}
-            NODE_VERSION=${NODE_VERSION:-22.9.0}
-            GO_VERSION=${GO_VERSION:-1.23.5}
+            HEADLAMP_VERSION=main
+            NODE_VERSION=22.9.0
+            GO_VERSION=1.23.5
