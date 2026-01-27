@@ -3,7 +3,7 @@
 
 ARG HEADLAMP_VERSION=main
 ARG NODE_VERSION=22.9.0
-ARG GO_VERSION=1.23.5
+ARG GO_VERSION=1.25.6
 
 # Stage 1: Builder - Clone and build Headlamp
 FROM node:${NODE_VERSION}-alpine AS builder
