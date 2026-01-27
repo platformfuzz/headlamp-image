@@ -1,0 +1,139 @@
+---
+# Namespace for Headlamp
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: headlamp
+---
+# ServiceAccount for Headlamp
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: headlamp
+  namespace: headlamp
+---
+# ClusterRole with read permissions
+# Note: This example uses cluster-admin for full access.
+# In production, create a custom ClusterRole with minimal required permissions.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: headlamp
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: headlamp
+  namespace: headlamp
+---
+# Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: headlamp
+  namespace: headlamp
+  labels:
+    app: headlamp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: headlamp
+  template:
+    metadata:
+      labels:
+        app: headlamp
+    spec:
+      serviceAccountName: headlamp
+      containers:
+      - name: headlamp
+        # Update with your image registry and tag
+        image: ghcr.io/YOUR_USERNAME/headlamp-docker:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 3010
+          protocol: TCP
+        env:
+        - name: HEADLAMP_PORT
+          value: "3010"
+        - name: HEADLAMP_PLUGIN_DIR
+          value: "/app/plugins"
+        # Optional: Mount plugins from ConfigMap or PersistentVolume
+        # volumeMounts:
+        # - name: plugins
+        #   mountPath: /app/plugins
+        #   readOnly: true
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      # volumes:
+      # - name: plugins
+      #   configMap:
+      #     name: headlamp-plugins
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: headlamp
+  namespace: headlamp
+  labels:
+    app: headlamp
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app: headlamp
+---
+# Ingress (optional - uncomment and configure for external access)
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: headlamp
+#   namespace: headlamp
+#   annotations:
+#     kubernetes.io/ingress.class: nginx
+#     cert-manager.io/cluster-issuer: letsencrypt-prod
+# spec:
+#   tls:
+#   - hosts:
+#     - headlamp.example.com
+#     secretName: headlamp-tls
+#   rules:
+#   - host: headlamp.example.com
+#     http:
+#       paths:
+#       - path: /
+#         pathType: Prefix
+#         backend:
+#           service:
+#             name: headlamp
+#             port:
+#               number: 80
